@@ -1,6 +1,6 @@
 # Pulse
 
-A hackathon-ready closed-loop personalization engine with LightGBM intent scoring, heuristic + ML fatigue diagnosis, sklearn NBA decision tree, FAISS similarity search, and a React marketer dashboard.
+A closed-loop personalization engine with LightGBM intent scoring, heuristic + ML fatigue diagnosis, sklearn NBA decision tree, FAISS similarity search, and a React marketer dashboard.
 
 ## Architecture
 
