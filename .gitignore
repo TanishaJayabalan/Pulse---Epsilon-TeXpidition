@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.env
+node_modules/
+dist/
+models/*.txt
+models/*.faiss
+models/*.npy
+models/*.joblib
+data/runtime/
+.venv/
+venv/

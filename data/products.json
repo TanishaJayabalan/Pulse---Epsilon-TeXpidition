@@ -1,0 +1,137 @@
+[
+  {
+    "product_id": "prod_ferrari_cap",
+    "name": "Ferrari Team Cap",
+    "category": "sports",
+    "entity": "Ferrari",
+    "description": "Official Ferrari F1 team cap for race day fans.",
+    "price": 45.0,
+    "brand": "Ferrari"
+  },
+  {
+    "product_id": "prod_leclerc_poster",
+    "name": "Leclerc Signed Poster",
+    "category": "sports",
+    "entity": "Charles Leclerc",
+    "description": "Limited edition Charles Leclerc poster.",
+    "price": 29.0,
+    "brand": "F1 Store"
+  },
+  {
+    "product_id": "prod_verstappen_hoodie",
+    "name": "Verstappen Champion Hoodie",
+    "category": "sports",
+    "entity": "Max Verstappen",
+    "description": "Max Verstappen championship hoodie.",
+    "price": 79.0,
+    "brand": "Red Bull"
+  },
+  {
+    "product_id": "prod_pizza_kit",
+    "name": "Artisan Pizza Kit",
+    "category": "food",
+    "entity": "Pizza",
+    "description": "Make restaurant-quality pizza at home.",
+    "price": 34.0,
+    "brand": "FoodCraft"
+  },
+  {
+    "product_id": "prod_sushi_set",
+    "name": "Sushi Starter Set",
+    "category": "food",
+    "entity": "Sushi",
+    "description": "Premium sushi rolling kit with guide.",
+    "price": 42.0,
+    "brand": "FoodCraft"
+  },
+  {
+    "product_id": "prod_rock_vinyl",
+    "name": "Classic Rock Vinyl Bundle",
+    "category": "music",
+    "entity": "Rock",
+    "description": "Curated rock vinyl collection.",
+    "price": 55.0,
+    "brand": "SoundWave"
+  },
+  {
+    "product_id": "prod_edm_festival",
+    "name": "EDM Festival Pass",
+    "category": "music",
+    "entity": "EDM",
+    "description": "VIP access to summer EDM festival.",
+    "price": 120.0,
+    "brand": "BeatLive"
+  },
+  {
+    "product_id": "prod_sephora_lip",
+    "name": "Sephora Lip Collection",
+    "category": "beauty",
+    "entity": "Sephora",
+    "description": "Top-rated lip color set from Sephora.",
+    "price": 38.0,
+    "brand": "Sephora"
+  },
+  {
+    "product_id": "prod_mac_palette",
+    "name": "MAC Eyeshadow Palette",
+    "category": "beauty",
+    "entity": "MAC",
+    "description": "Professional MAC eyeshadow palette.",
+    "price": 52.0,
+    "brand": "MAC"
+  },
+  {
+    "product_id": "prod_nike_shoes",
+    "name": "Nike Running Shoes",
+    "category": "fashion",
+    "entity": "Nike",
+    "description": "Lightweight Nike running shoes.",
+    "price": 110.0,
+    "brand": "Nike"
+  },
+  {
+    "product_id": "prod_adidas_track",
+    "name": "Adidas Track Jacket",
+    "category": "fashion",
+    "entity": "Adidas",
+    "description": "Classic Adidas track jacket.",
+    "price": 85.0,
+    "brand": "Adidas"
+  },
+  {
+    "product_id": "prod_iphone_case",
+    "name": "iPhone Pro Case",
+    "category": "tech",
+    "entity": "Apple",
+    "description": "Slim protective case for iPhone Pro.",
+    "price": 49.0,
+    "brand": "Apple"
+  },
+  {
+    "product_id": "prod_galaxy_buds",
+    "name": "Galaxy Buds Pro",
+    "category": "tech",
+    "entity": "Samsung",
+    "description": "Noise-cancelling Galaxy Buds.",
+    "price": 149.0,
+    "brand": "Samsung"
+  },
+  {
+    "product_id": "prod_ferrari_model",
+    "name": "Ferrari Model Car 1:18",
+    "category": "sports",
+    "entity": "Ferrari",
+    "description": "Die-cast Ferrari model car.",
+    "price": 65.0,
+    "brand": "Ferrari"
+  },
+  {
+    "product_id": "prod_pizza_oven",
+    "name": "Mini Pizza Oven",
+    "category": "food",
+    "entity": "Pizza",
+    "description": "Countertop pizza oven for enthusiasts.",
+    "price": 199.0,
+    "brand": "FoodCraft"
+  }
+]
