@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Activity,
@@ -128,30 +128,33 @@ function App() {
   const [lastUpdated, setLastUpdated] = useState("");
 
   async function load() {
-    setError("");
-    try {
-      const [dashboardRes, customersRes] = await Promise.all([
-        fetch(`${API}/api/dashboard`),
-        fetch(`${API}/api/customers`),
-      ]);
-      if (!dashboardRes.ok || !customersRes.ok) throw new Error("API not responding");
-      const dashboardData = await dashboardRes.json();
-      const customersData = await customersRes.json();
-      setDashboard(dashboardData);
-      setCustomers(customersData);
-      const targetId = selectedCustomer || customersData[0]?.customer_id;
-      if (targetId) {
-        const detailRes = await fetch(`${API}/api/customers/${targetId}`);
-        if (detailRes.ok) setDetail(await detailRes.json());
-      }
-      setLastUpdated(new Date().toLocaleTimeString());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load data");
-    } finally {
-      setLoading(false);
+  setError("");
+  try {
+    const [dashboardRes, customersRes] = await Promise.all([
+      fetch(`${API}/api/dashboard`),
+      fetch(`${API}/api/customers`),
+    ]);
+    if (!dashboardRes.ok || !customersRes.ok) throw new Error("API not responding");
+    const dashboardData = await dashboardRes.json();
+    const customersData = await customersRes.json();
+    setDashboard(dashboardData);
+    setCustomers(customersData);
+    const targetId = selectedCustomerRef.current || customersData[0]?.customer_id;
+    if (targetId) {
+      const detailRes = await fetch(`${API}/api/customers/${targetId}`);
+      if (detailRes.ok) setDetail(await detailRes.json());
     }
+    setLastUpdated(new Date().toLocaleTimeString());
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Unable to load data");
+  } finally {
+    setLoading(false);
   }
+}
 
+  const selectedCustomerRef = useRef(selectedCustomer);
+  useEffect(() => { selectedCustomerRef.current = selectedCustomer; }, [selectedCustomer]);
+  
   useEffect(() => {
     load();
     const interval = setInterval(load, 15000);
