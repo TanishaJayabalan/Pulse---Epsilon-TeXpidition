@@ -51,8 +51,8 @@ Open http://localhost:5173
 | Confidence | Logistic Regression routing to AUTO_EXECUTE, NEEDS_REVIEW, AUTO_SUPPRESSED |
 | Reasoning | Groq Llama-3.3-70b-versatile generating HITL review summaries |
 | Explainability | sentence-transformers + FAISS, k threshold 0.85 + collab filtering |
-| Retrain | All 4 models, every 15 minutes |
-| HITL | Approve / Reject / Edit with reason codes |
+| Retrain | All 4 models, every 60 minutes |
+| HITL | Approve / Reject / Edit with reason codes - (Marketer feedback improves model)|
 
 ## API Endpoints
 
@@ -85,3 +85,28 @@ Open http://localhost:5173
 - Models persist in `models/` directory
 - Dashboard auto-refreshes every 15 seconds
 - Retrain scheduler runs every 60 minutes in background
+
+## AI Capabilities and Features
+
+- Product Recommendation Engine
+- Intelligent Suppression Engine
+- Explainable AI
+- Time Decay based Intent Scoring
+- Business Insights Dashboard
+- Automated Confidence based Action Routing for the HITL
+- Pre Launch SandBox
+- Periodic Retraining
+
+## Engineering Considerations and Scalability
+
+- Asynchronous and Stateless - FastAPI
+- Fast Product Search using FAISS
+- Hybrid AI Architecture
+- Modular → React - Frontend; Python - Backend; CORS - Middleware
+
+## Future Scope
+
+- Omnichannel Orchestration
+- Autonomous Margin Optimisation → Dynamic Pricing
+- Supply-Chain Synchronised Marketing
+- Hyper-Local Predictive Churn Prevention → Adapting to Real-World Happenings
