@@ -136,6 +136,16 @@ class IntentModel:
 
         vec = np.array([[row[col] for col in FEATURE_COLS]])
         prob = float(self.model.predict(vec)[0])
+        
+        # Boost probability heuristically for recent strong signals 
+        # so the simulator feels highly responsive to injected events.
+        if row.get("product_cart_7d", 0) > 0:
+            prob += 0.35
+        elif row.get("product_clicks_7d", 0) > 0:
+            prob += 0.20
+        if row.get("purchases_30d", 0) > 0:
+            prob += 0.15
+            
         return max(0.0, min(1.0, prob))
 
     def score_all_products(
@@ -145,10 +155,46 @@ class IntentModel:
         events: list[dict],
         fatigue_score: float = 0.0,
     ) -> list[tuple[dict, float]]:
-        scored = [
-            (product, self.predict(customer, product, events, fatigue_score))
-            for product in products
-        ]
+        if not products:
+            return []
+
+        rows = [self._build_row(customer, p, events, fatigue_score) for p in products]
+        
+        if self.model is None:
+            scored = []
+            for i, p in enumerate(products):
+                row = rows[i]
+                score = (
+                    row["interest_match"] * 0.4
+                    + row["product_clicks_7d"] * 0.15
+                    + row["product_cart_7d"] * 0.2
+                    + row["purchases_30d"] * 0.15
+                    - row["negative_7d"] * 0.1
+                    - fatigue_score * 0.2
+                )
+                scored.append((p, max(0.0, min(1.0, score))))
+            return sorted(scored, key=lambda x: x[1], reverse=True)
+
+        # Vectorized prediction
+        vec = np.array([[row[col] for col in FEATURE_COLS] for row in rows])
+        probs = self.model.predict(vec)
+        
+        scored = []
+        for i, p in enumerate(products):
+            row = rows[i]
+            prob = float(probs[i])
+            
+            # Boost probability heuristically for recent strong signals 
+            # so the simulator feels highly responsive to injected events.
+            if row.get("product_cart_7d", 0) > 0:
+                prob += 0.35
+            elif row.get("product_clicks_7d", 0) > 0:
+                prob += 0.20
+            if row.get("purchases_30d", 0) > 0:
+                prob += 0.15
+                
+            scored.append((p, max(0.0, min(1.0, prob))))
+
         return sorted(scored, key=lambda x: x[1], reverse=True)
 
     def _save(self) -> None:

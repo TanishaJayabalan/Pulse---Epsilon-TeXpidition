@@ -4,10 +4,11 @@ A closed-loop personalization engine with LightGBM intent scoring, heuristic + M
 
 ## Architecture
 
-```
+```text
 Data Collection (events) → PeopleCloud Identity → Signal Weighting (exp decay)
     → Fatigue Heuristics → Diagnosis Classifier → Intent LightGBM
     → FAISS Top-k Filtering → NBA Policy (single-change → decision tree)
+    → Confidence Routing (Logistic Regression) → LLM Reasoning (Llama 3.3)
     → HITL Marketer Review → Outcome Capture → Mini-batch Retrain (60 min)
 ```
 
@@ -18,7 +19,6 @@ Data Collection (events) → PeopleCloud Identity → Signal Weighting (exp deca
 ```bash
 python scripts/generate_seed_data.py
 ```
-
 Creates 2,000 train + 500 test customers, behavioral events, products, and labeled outcomes in `data/`.
 
 ### 2. Backend
@@ -28,7 +28,6 @@ cd backend
 pip install -r requirements.txt
 python -m uvicorn app.main:app --port 8003
 ```
-
 First startup trains all models and builds the FAISS index (~1-2 min on CPU).
 
 ### 3. Frontend
@@ -38,7 +37,6 @@ cd frontend
 npm install
 npm run dev
 ```
-
 Open http://localhost:5173
 
 ## Key Specs Implemented
@@ -50,8 +48,10 @@ Open http://localhost:5173
 | Fatigue | 5 email ignores / 3 offer ignores / 5-day morning mismatch |
 | Diagnosis | RandomForest multiclass (channel/timing/offer/none) |
 | NBA | Single-change first, then sklearn DecisionTree combinations |
+| Confidence | Logistic Regression routing to AUTO_EXECUTE, NEEDS_REVIEW, AUTO_SUPPRESSED |
+| Reasoning | Groq Llama-3.3-70b-versatile generating HITL review summaries |
 | Explainability | sentence-transformers + FAISS, k threshold 0.85 + collab filtering |
-| Retrain | All 3 models, every 15 minutes |
+| Retrain | All 4 models, every 15 minutes |
 | HITL | Approve / Reject / Edit with reason codes |
 
 ## API Endpoints

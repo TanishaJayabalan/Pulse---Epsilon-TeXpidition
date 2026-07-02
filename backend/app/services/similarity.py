@@ -12,13 +12,17 @@ _index: faiss.IndexFlatIP | None = None
 _product_ids: list[str] = []
 _product_map: dict[str, dict] = {}
 _collab_scores: dict[str, dict[str, float]] = {}
+_query_cache: dict[str, np.ndarray] = {}
 
 
 def _get_encoder():
     global _encoder
     if _encoder is None:
         from sentence_transformers import SentenceTransformer
-        _encoder = SentenceTransformer("all-MiniLM-L6-v2")
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            _encoder = SentenceTransformer("all-MiniLM-L6-v2")
     return _encoder
 
 
@@ -60,10 +64,11 @@ def build_index(products: list[dict], outcomes: list[dict] | None = None) -> dic
     if outcomes:
         _build_collaborative_scores(outcomes)
 
-    if index_path.exists() and ids_path.exists() and _index is None:
-        _index = faiss.read_index(str(index_path))
-        _product_ids = list(np.load(str(ids_path), allow_pickle=True))
-        _product_map = {p["product_id"]: p for p in products}
+    if index_path.exists() and ids_path.exists():
+        if _index is None:
+            _index = faiss.read_index(str(index_path))
+            _product_ids = list(np.load(str(ids_path), allow_pickle=True))
+            _product_map = {p["product_id"]: p for p in products}
         return {"indexed": len(_product_ids), "dimensions": _index.d, "cached": True}
 
     encoder = _get_encoder()
@@ -109,9 +114,15 @@ def search_top_k(
             ]
         return []
 
-    encoder = _get_encoder()
-    query = encoder.encode([_customer_text(profile)], normalize_embeddings=True)
-    query_vec = np.array(query, dtype=np.float32)
+    query_text = _customer_text(profile)
+    if query_text in _query_cache:
+        query_vec = _query_cache[query_text]
+    else:
+        encoder = _get_encoder()
+        query = encoder.encode([query_text], normalize_embeddings=True)
+        query_vec = np.array(query, dtype=np.float32)
+        _query_cache[query_text] = query_vec
+        
     scores, indices = _index.search(query_vec, min(k * 3, len(_product_ids)))
 
     intent_map = {p["product_id"]: s for p, s in (intent_scores or [])}

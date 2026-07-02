@@ -114,3 +114,7 @@ class RecommendationResponse(BaseModel):
     decision_source: str
     nba_action: str
     model_version: str
+    confidence_zone: str | None = None
+    confidence_score: float | None = None
+    confidence_color: str | None = None
+    reasoning_summary: str | None = None

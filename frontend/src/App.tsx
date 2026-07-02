@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Activity,
@@ -66,6 +66,13 @@ type Recommendation = {
   nba_strategy?: string;
   nba_reason?: string;
   model_version: string;
+  confidence_zone?: string;
+  confidence_score?: number;
+  confidence_color?: string;
+  reasoning_summary?: string | null;
+  effective_action?: string;
+  effective_channel?: string;
+  queue_eligible?: boolean;
 };
 
 type Customer = {
@@ -127,50 +134,62 @@ function App() {
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState("");
 
-  async function load() {
-  setError("");
-  try {
-    const [dashboardRes, customersRes] = await Promise.all([
-      fetch(`${API}/api/dashboard`),
-      fetch(`${API}/api/customers`),
-    ]);
-    if (!dashboardRes.ok || !customersRes.ok) throw new Error("API not responding");
-    const dashboardData = await dashboardRes.json();
-    const customersData = await customersRes.json();
-    setDashboard(dashboardData);
-    setCustomers(customersData);
-    const targetId = selectedCustomerRef.current || customersData[0]?.customer_id;
-    if (targetId) {
-      const detailRes = await fetch(`${API}/api/customers/${targetId}`);
-      if (detailRes.ok) setDetail(await detailRes.json());
+  async function load(force = false) {
+    setError("");
+    try {
+      const dashboardUrl = force ? `${API}/api/dashboard?force=true` : `${API}/api/dashboard`;
+      const [dashboardRes, customersRes] = await Promise.all([
+        fetch(dashboardUrl),
+        fetch(`${API}/api/customers`),
+      ]);
+      if (!dashboardRes.ok || !customersRes.ok) throw new Error("API not responding");
+      const dashboardData = await dashboardRes.json();
+      const customersData = await customersRes.json();
+      setDashboard(dashboardData);
+      setCustomers(customersData);
+      setLastUpdated(new Date().toLocaleTimeString());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load data");
+    } finally {
+      setLoading(false);
     }
-    setLastUpdated(new Date().toLocaleTimeString());
-  } catch (err) {
-    setError(err instanceof Error ? err.message : "Unable to load data");
-  } finally {
-    setLoading(false);
   }
-}
 
-  const selectedCustomerRef = useRef(selectedCustomer);
-  useEffect(() => { selectedCustomerRef.current = selectedCustomer; }, [selectedCustomer]);
-  
+  useEffect(() => {
+    if (customers.length > 0 && !selectedCustomer) {
+      setSelectedCustomer(customers[0].customer_id);
+    }
+  }, [customers, selectedCustomer]);
+
   useEffect(() => {
     load();
-    const interval = setInterval(load, 15000);
+    const interval = setInterval(() => load(false), 15000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
     if (!selectedCustomer) return;
+    let cancelled = false;
+    setDetail(null);
     fetch(`${API}/api/customers/${selectedCustomer}`)
-      .then((res) => res.json())
-      .then(setDetail)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setDetail(data);
+      })
       .catch(() => null);
+    return () => {
+      cancelled = true;
+    };
   }, [selectedCustomer]);
 
   const pending = useMemo(
-    () => dashboard?.recommendations.filter((rec) => rec.status === "pending") ?? [],
+    () =>
+      dashboard?.recommendations.filter(
+        (rec) =>
+          rec.confidence_zone === "NEEDS_REVIEW" &&
+          rec.status === "pending" &&
+          rec.queue_eligible !== false,
+      ) ?? [],
     [dashboard],
   );
 
@@ -198,8 +217,8 @@ function App() {
                 <Clock size={14} /> Updated {lastUpdated}
               </Badge>
             ) : null}
-            <GhostButton onClick={load} disabled={loading}>
-              <RefreshCw size={16} /> Refresh
+            <GhostButton onClick={() => load(true)} disabled={loading}>
+              <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh
             </GhostButton>
           </div>
         </div>
@@ -217,9 +236,8 @@ function App() {
             <button
               key={String(id)}
               onClick={() => setTab(String(id))}
-              className={`inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-semibold ${
-                tab === id ? "border-primary bg-primary text-primary-foreground" : "border-border bg-white"
-              }`}
+              className={`inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-semibold ${tab === id ? "border-primary bg-primary text-primary-foreground" : "border-border bg-white"
+                }`}
             >
               <Icon size={16} /> {String(label)}
             </button>
@@ -265,13 +283,14 @@ function App() {
 }
 
 function DashboardView({ dashboard, pending }: { dashboard: Dashboard; pending: number }) {
+  const m = dashboard.metrics ?? {};
   const metrics = [
-    ["Events/day", dashboard.metrics.events_per_day, "Daily behavioral signals"],
-    ["ID match", `${dashboard.metrics.id_match_rate}%`, "PeopleCloud identity confidence"],
-    ["Suppression", `${dashboard.metrics.suppression_rate}%`, "Users in cooldown"],
-    ["Interaction", `${dashboard.metrics.interaction_rate}%`, "Positive outcome rate"],
-    ["Override", `${dashboard.metrics.override_rate}%`, "Marketer HITL feedback"],
-    ["Retrains", dashboard.model_status.retrain_count, "Mini-batch cycles completed"],
+    ["Events/day", m.events_per_day ?? 0, "Daily behavioral signals"],
+    ["ID match", `${m.id_match_rate ?? 0}%`, "PeopleCloud identity confidence"],
+    ["Suppression", `${m.suppression_rate ?? 0}%`, "Users in cooldown"],
+    ["Interaction", `${m.interaction_rate ?? 0}%`, "Positive outcome rate"],
+    ["Override", `${m.override_rate ?? 0}%`, "Marketer HITL feedback"],
+    ["Retrains", dashboard.model_status?.retrain_count ?? 0, "Mini-batch cycles completed"],
   ];
 
   const historyChart = dashboard.metrics_history
@@ -293,6 +312,24 @@ function DashboardView({ dashboard, pending }: { dashboard: Dashboard; pending: 
             <p className="mt-1 text-xs text-muted-foreground">{helper}</p>
           </Card>
         ))}
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-3">
+        <Card className="border border-red-300 bg-red-50 p-4">
+          <p className="text-xs font-semibold uppercase text-red-800">Auto-Suppressed</p>
+          <p className="mt-2 text-2xl font-bold text-red-900">{m.zone_auto_suppressed ?? 0}</p>
+          <p className="mt-1 text-xs text-red-700">Outreach held — signals too weak or risky</p>
+        </Card>
+        <Card className="border border-amber-300 bg-amber-50 p-4">
+          <p className="text-xs font-semibold uppercase text-amber-800">Needs Review</p>
+          <p className="mt-2 text-2xl font-bold text-amber-900">{m.zone_needs_review ?? 0}</p>
+          <p className="mt-1 text-xs text-amber-700">Awaiting marketer decision in review queue</p>
+        </Card>
+        <Card className="border border-green-300 bg-green-50 p-4">
+          <p className="text-xs font-semibold uppercase text-green-800">Auto-Execute</p>
+          <p className="mt-2 text-2xl font-bold text-green-900">{m.zone_auto_execute ?? 0}</p>
+          <p className="mt-1 text-xs text-green-700">Safe to send without human review</p>
+        </Card>
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
@@ -352,7 +389,12 @@ function Insight({ icon, title, text }: { icon: React.ReactNode; title: string; 
 }
 
 function QueueView({ recommendations, onChanged }: { recommendations: Recommendation[]; onChanged: () => void }) {
-  const pending = recommendations.filter((r) => r.status === "pending");
+  const pending = recommendations.filter(
+    (r) =>
+      r.confidence_zone === "NEEDS_REVIEW" &&
+      r.status === "pending" &&
+      r.queue_eligible !== false,
+  );
   return (
     <div>
       <p className="mb-4 text-sm text-muted-foreground">{pending.length} recommendations awaiting marketer review</p>
@@ -360,6 +402,12 @@ function QueueView({ recommendations, onChanged }: { recommendations: Recommenda
         {pending.slice(0, 12).map((rec) => (
           <RecommendationCard key={rec.id} rec={rec} onChanged={onChanged} />
         ))}
+        {pending.length === 0 ? (
+          <Card className="p-6 text-sm text-muted-foreground lg:col-span-3">
+            No recommendations awaiting review. Auto-suppressed and auto-executed decisions are
+            managed on the Customers tab.
+          </Card>
+        ) : null}
       </div>
     </div>
   );
@@ -437,6 +485,7 @@ function RecommendationCard({ rec, onChanged }: { rec: Recommendation; onChanged
         <option value="wrong_timing">Wrong timing</option>
         <option value="wrong_offer">Wrong offer</option>
         <option value="brand_guideline">Brand guideline conflict</option>
+        <option value="stock_unavailable">Stock unavailable</option>
       </Select>
       <div className="mt-3 flex flex-wrap gap-2">
         <Button onClick={() => submit("approved")}>
@@ -481,9 +530,8 @@ function CustomerView({
             <button
               key={customer.customer_id}
               onClick={() => setSelected(customer.customer_id)}
-              className={`w-full rounded-md border p-3 text-left ${
-                selected === customer.customer_id ? "border-primary bg-teal-50" : "border-border bg-white"
-              }`}
+              className={`w-full rounded-md border p-3 text-left ${selected === customer.customer_id ? "border-primary bg-teal-50" : "border-border bg-white"
+                }`}
             >
               <p className="font-semibold">{customer.name}</p>
               <p className="text-sm text-muted-foreground">
@@ -514,13 +562,61 @@ function CustomerView({
               <Score label="Intent" value={detail.recommendation.intent_score} />
               <Score label="Fatigue" value={detail.recommendation.fatigue_score} />
               <Score label="ID match" value={`${Math.round(detail.customer.match_confidence * 100)}%`} />
-              <Score label="Channel" value={detail.recommendation.channel} />
+              <Score
+                label="Channel"
+                value={detail.recommendation.effective_channel ?? detail.recommendation.channel}
+              />
             </div>
           </Card>
 
           <Card className="p-5">
             <h3 className="mb-3 text-lg font-bold">NBA Recommendation</h3>
-            <p className="font-semibold">{detail.recommendation.action}</p>
+            <p className="font-semibold text-lg">
+              {detail.recommendation.effective_action ?? detail.recommendation.action}
+            </p>
+            {detail.recommendation.confidence_zone === "AUTO_SUPPRESSED" ? (
+              <p className="mt-1 text-xs text-red-700">
+                Underlying NBA suggestion: {detail.recommendation.action} — overridden by suppression policy
+              </p>
+            ) : null}
+            {detail.recommendation.confidence_zone ? (
+              <div
+                className={`mt-3 inline-flex items-center gap-3 rounded-full px-4 py-2 text-sm font-semibold ${detail.recommendation.confidence_color === "green"
+                    ? "border border-green-300 bg-green-100 text-green-800"
+                    : detail.recommendation.confidence_color === "red"
+                      ? "border border-red-300 bg-red-100 text-red-800"
+                      : "border border-amber-300 bg-amber-100 text-amber-800"
+                  }`}
+              >
+                <span>
+                  {detail.recommendation.confidence_color === "green"
+                    ? "🟢"
+                    : detail.recommendation.confidence_color === "red"
+                      ? "🔴"
+                      : "🟡"}{" "}
+                  {detail.recommendation.confidence_zone.replace(/_/g, "-")}
+                </span>
+                <span className="font-normal opacity-80">
+                  confidence: {(detail.recommendation.confidence_score ?? 0).toFixed(2)}
+                </span>
+              </div>
+            ) : null}
+            {detail.recommendation.reasoning_summary ? (
+              <Card className="mt-3 bg-muted/40 p-4">
+                <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">AI Reasoning</p>
+                <p className="text-sm leading-relaxed">{detail.recommendation.reasoning_summary}</p>
+              </Card>
+            ) : (
+              <Card className="mt-3 bg-muted/40 p-4">
+                <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">AI Reasoning</p>
+                <div className="animate-pulse space-y-2">
+                  <div className="h-3 rounded bg-muted" />
+                  <div className="h-3 w-5/6 rounded bg-muted" />
+                  <div className="h-3 w-4/6 rounded bg-muted" />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">Generating summary (once per recommendation)…</p>
+              </Card>
+            )}
             <p className="mt-2 text-sm text-muted-foreground">{detail.recommendation.explanation}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Badge>{detail.recommendation.nba_action}</Badge>
@@ -538,7 +634,7 @@ function CustomerView({
                   className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
-                    <p className="font-semibold">{event.type.replaceAll("_", " ")}</p>
+                    <p className="font-semibold">{event.type.replace(/_/g, " ")}</p>
                     <p className="text-sm text-muted-foreground">
                       {event.product_name} via {event.channel}
                     </p>
@@ -709,7 +805,7 @@ function ModelsView({ status, onRetrain }: { status: ModelStatus; onRetrain: () 
       <Card className="p-5">
         <h3 className="font-bold">Retraining Pipeline</h3>
         <pre className="mt-3 overflow-x-auto rounded-md bg-muted p-4 text-xs">
-{`Events stream in
+          {`Events stream in
         ↓
 Collect last 60 min
         ↓

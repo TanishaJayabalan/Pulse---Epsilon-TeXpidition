@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -94,6 +95,39 @@ class DataStore:
 
     def add_action_history(self, customer_id: str, entry: dict[str, Any]) -> None:
         self.action_history.setdefault(customer_id, []).append(entry)
+
+    def add_hitl_action_history(
+        self,
+        customer_id: str,
+        *,
+        intent_score: float,
+        fatigue_score: float,
+        fatigue_type: str,
+        channel: str,
+        status: str,
+        offer_category: str,
+        reason: str | None = None,
+        days_since_last_conversion: float | None = None,
+        hitl_override_rate: float | None = None,
+        marketer_reject_rate: float | None = None,
+    ) -> None:
+        entry: dict[str, Any] = {
+            "intent_score": intent_score,
+            "fatigue_score": fatigue_score,
+            "fatigue_type": fatigue_type,
+            "channel": channel,
+            "status": status,
+            "offer_category": offer_category,
+            "reason": reason,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if days_since_last_conversion is not None:
+            entry["days_since_last_conversion"] = days_since_last_conversion
+        if hitl_override_rate is not None:
+            entry["hitl_override_rate"] = hitl_override_rate
+        if marketer_reject_rate is not None:
+            entry["marketer_reject_rate"] = marketer_reject_rate
+        self.add_action_history(customer_id, entry)
 
     def get_action_history(self, customer_id: str) -> list[dict[str, Any]]:
         return self.action_history.get(customer_id, [])
